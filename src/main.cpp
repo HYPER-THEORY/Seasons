@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -6,77 +7,11 @@
 #include "audio.hpp"
 #include "flat.hpp"
 #include "gl.hpp"
+#include "leaf.hpp"
 #include "obj.hpp"
 #include "physics.hpp"
 #include "window.hpp"
 #include "game.hpp"
-
-class flatcamera : public camera {
-public:
-	int cursortype = 0;
-	int dashtime = 10;
-	int loadtime = 0;
-	double distances[16];
-	mat<4, 10> cursor[2];
-	
-	flatcamera() {}
-	
-	flatcamera(int w, int h, double fy, double zn, double zf) : camera(w, h, fy, zn, zf) {}
-	
-	void draw(const std::vector<instance*>& is, shader& s, std::vector<uint32_t>& c) {
-		int total = 0;
-		for (auto& i : is) total += i->data->facevertices.size();
-		std::vector<vec3> world(total);
-		deferredshading(is, s, world, c);
-		for (int i = width * height; i --> 0;) {
-			int x = i % width;
-			int y = i / width;
-			if (loadtime < 15 && zbuffer[i] > distances[loadtime])
-				c[i] = zbuffer[i] < distances[loadtime + 1] ? 0xc9ffd5 : 0xa9d9cb;
-			double distance = sqrt((x - width / 2) * (x - width / 2) + (y - height / 2) * (y - height / 2));
-			double intensity = fmax(0, distance - height / 2) * (10 - dashtime) * .0004;
-			c[i] = floor(fmax(c[i] % 0x100 - intensity * 0xff, 0)) +
-				floor(fmax(c[i] / 0x100 % 0x100 - intensity * 0xff, 0)) * 0x100 +
-				floor(fmax(c[i] / 0x10000 - intensity * 0xff, 0)) * 0x10000;
-		}
-		if (dashtime < 10) ++dashtime;
-		if (loadtime < 15) ++loadtime;
-		for (int x = 0; x < 10; ++x)
-			for (int y = 0; y < 4; ++y)
-				if (cursor[cursortype][y][x] == 1) c[x - 4 + width / 2 + (y - 4 + height / 2) * width] = 0x012840;
-	}
-};
-
-class leaf {
-public:
-	instance* graphic = nullptr;
-	vec3 velocity;
-	vec3 limit;
-	vec3 delta;
-	double range = 0;
-	double speed = 0;
-	
-	leaf() {}
-	
-	leaf(instance* g, double r, double s, const vec3& l = {}, const vec3& d = {}) : graphic(g), range(r), speed(s),
-		limit(l), delta(d) {}
-	
-	void reset(const vec3& p) {
-		graphic->position = p + vec3{random01(), random01(), random01()} * (range * 2) - vec3{1, 1, 1} * range;
-		graphic->rotation = vec3{random01(), random01(), random01()} * M_PI * 2;
-		graphic->scale = {.1, 1, .1};
-	}
-	
-	void update(const vec3& p) {
-		vec3 acceleration = vec3{random01(), random01(), random01()} * (speed * 2) + vec3{1, 1, 1} * -speed + delta;
-		if (fabs(velocity.x + acceleration.x) < limit.x) velocity.x += acceleration.x;
-		if (fabs(velocity.y + acceleration.y) < limit.y) velocity.y += acceleration.y;
-		if (fabs(velocity.z + acceleration.z) < limit.z) velocity.z += acceleration.z;
-		graphic->position += velocity;
-		vec3 relative = graphic->position - p;
-		if (fabs(relative.x) > range || fabs(relative.y) > range || fabs(relative.z > range)) reset(p);
-	}
-};
 
 // core parts
 solid character;
@@ -299,9 +234,9 @@ void restart() {
 
 void load() {
 	// initialize music
-	music("audios/", audios);
+//	music("/Users/hypertheory/GL/audios/", audios);
 	// initialize scene
-	scene("models/", instances, groups);
+	scene("/Users/hypertheory/GL/models/", instances, groups);
 	solids = std::vector<solid>(instances.size());
 	for (size_t i = groups.size(); i --> 0;) solidify(instances, groups[i], solids[i]);
 	// initialize camera
@@ -433,9 +368,9 @@ void update(double dt) {
 }
 
 int main(int argc, char** argv) {
-	width = 600;
-	height = 337;
-	scale = 2;
+	width = 960;
+	height = 540;
+	scale = 1;
 	title = "Seasons";
 	fps = 30;
 	hidecursor = true;
